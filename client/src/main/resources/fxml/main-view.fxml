@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.text.Font?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.datacompress.client.ui.MainController"
+      spacing="15" style="-fx-padding: 20;">
+    
+    <!-- 标题 -->
+    <HBox alignment="CENTER" styleClass="title-box">
+        <Label text="数据压缩测试系统" styleClass="title-label">
+            <font>
+                <Font name="System Bold" size="24"/>
+            </font>
+        </Label>
+    </HBox>
+    
+    <!-- 连接区域 -->
+    <VBox spacing="10" styleClass="section-box">
+        <Label text="服务器连接" styleClass="section-title">
+            <font>
+                <Font size="16"/>
+            </font>
+        </Label>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="主机:"/>
+            <TextField fx:id="hostField" prefWidth="150"/>
+            
+            <Label text="端口:">
+                <HBox.margin>
+                    <Insets left="20"/>
+                </HBox.margin>
+            </Label>
+            <TextField fx:id="portField" prefWidth="80"/>
+            
+            <Button fx:id="connectButton" text="连接" onAction="#handleConnect" styleClass="primary-button">
+                <HBox.margin>
+                    <Insets left="20"/>
+                </HBox.margin>
+            </Button>
+            
+            <Region HBox.hgrow="ALWAYS"/>
+            
+            <Circle fx:id="statusIndicator" radius="8" fill="RED"/>
+            <Label fx:id="statusLabel" text="未连接">
+                <HBox.margin>
+                    <Insets left="5"/>
+                </HBox.margin>
+            </Label>
+        </HBox>
+    </VBox>
+    
+    <!-- 文件选择和发送区域 -->
+    <VBox spacing="10" styleClass="section-box">
+        <Label text="文件传输" styleClass="section-title">
+            <font>
+                <Font size="16"/>
+            </font>
+        </Label>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="文件:"/>
+            <TextField fx:id="filePathField" editable="false" HBox.hgrow="ALWAYS" promptText="请选择要传输的文件"/>
+            <Button fx:id="browseButton" text="浏览..." onAction="#handleBrowse"/>
+        </HBox>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="压缩算法:"/>
+            <ComboBox fx:id="algorithmComboBox" prefWidth="150"/>
+            
+            <Label fx:id="levelLabel" text="压缩级别:">
+                <HBox.margin>
+                    <Insets left="20"/>
+                </HBox.margin>
+            </Label>
+            <Spinner fx:id="compressionLevelSpinner" prefWidth="80" editable="true"/>
+            
+            <Button fx:id="sendButton" text="发送" onAction="#handleSend" styleClass="primary-button">
+                <HBox.margin>
+                    <Insets left="20"/>
+                </HBox.margin>
+            </Button>
+            
+            <Region HBox.hgrow="ALWAYS"/>
+            
+            <Label fx:id="progressLabel" text="" prefWidth="120"/>
+        </HBox>
+        
+        <ProgressBar fx:id="progressBar" prefWidth="Infinity" progress="0"/>
+    </VBox>
+    
+    <!-- 性能指标显示区域 -->
+    <VBox spacing="10" styleClass="section-box">
+        <Label text="性能指标" styleClass="section-title">
+            <font>
+                <Font size="16"/>
+            </font>
+        </Label>
+        
+        <GridPane hgap="20" vgap="10">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+                <ColumnConstraints percentWidth="25"/>
+            </columnConstraints>
+            
+            <!-- 第一行 -->
+            <VBox GridPane.columnIndex="0" GridPane.rowIndex="0" spacing="5" styleClass="metric-box">
+                <Label text="原始大小" styleClass="metric-label"/>
+                <Label fx:id="originalSizeLabel" text="-" styleClass="metric-value"/>
+            </VBox>
+            
+            <VBox GridPane.columnIndex="1" GridPane.rowIndex="0" spacing="5" styleClass="metric-box">
+                <Label text="压缩后大小" styleClass="metric-label"/>
+                <Label fx:id="compressedSizeLabel" text="-" styleClass="metric-value"/>
+            </VBox>
+            
+            <VBox GridPane.columnIndex="2" GridPane.rowIndex="0" spacing="5" styleClass="metric-box">
+                <Label text="压缩比" styleClass="metric-label"/>
+                <Label fx:id="compressionRatioLabel" text="-" styleClass="metric-value"/>
+            </VBox>
+            
+            <VBox GridPane.columnIndex="3" GridPane.rowIndex="0" spacing="5" styleClass="metric-box">
+                <Label text="压缩耗时" styleClass="metric-label"/>
+                <Label fx:id="compressTimeLabel" text="-" styleClass="metric-value"/>
+            </VBox>
+            
+            <!-- 第二行 -->
+            <VBox GridPane.columnIndex="0" GridPane.rowIndex="1" spacing="5" styleClass="metric-box">
+                <Label text="发送耗时" styleClass="metric-label"/>
+                <Label fx:id="sendTimeLabel" text="-" styleClass="metric-value"/>
+            </VBox>
+            
+            <VBox GridPane.columnIndex="1" GridPane.rowIndex="1" spacing="5" styleClass="metric-box">
+                <Label text="传播时延" styleClass="metric-label"/>
+                <Label fx:id="propagationDelayLabel" text="-" styleClass="metric-value"/>
+            </VBox>
+            
+            <VBox GridPane.columnIndex="2" GridPane.rowIndex="1" spacing="5" styleClass="metric-box">
+                <Label text="解压耗时" styleClass="metric-label"/>
+                <Label fx:id="decompressTimeLabel" text="-" styleClass="metric-value"/>
+            </VBox>
+            
+            <VBox GridPane.columnIndex="3" GridPane.rowIndex="1" spacing="5" styleClass="metric-box">
+                <Label text="总往返时间" styleClass="metric-label"/>
+                <Label fx:id="totalTimeLabel" text="-" styleClass="metric-value"/>
+            </VBox>
+        </GridPane>
+    </VBox>
+    
+    <!-- 历史记录表格 -->
+    <VBox spacing="10" styleClass="section-box" VBox.vgrow="ALWAYS">
+        <Label text="测试历史" styleClass="section-title">
+            <font>
+                <Font size="16"/>
+            </font>
+        </Label>
+        
+        <TableView fx:id="historyTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="algorithmColumn" text="压缩算法" prefWidth="100"/>
+                <TableColumn fx:id="originalSizeColumn" text="原始大小" prefWidth="100"/>
+                <TableColumn fx:id="compressedSizeColumn" text="压缩后大小" prefWidth="120"/>
+                <TableColumn fx:id="ratioColumn" text="压缩比" prefWidth="80"/>
+                <TableColumn fx:id="compressTimeColumn" text="压缩耗时" prefWidth="100"/>
+                <TableColumn fx:id="totalTimeColumn" text="总耗时" prefWidth="100"/>
+            </columns>
+        </TableView>
+    </VBox>
+    
+</VBox>
