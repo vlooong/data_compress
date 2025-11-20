@@ -5,6 +5,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.shape.Circle?>
 <?import javafx.scene.text.Font?>
+<?import javafx.scene.chart.*?>
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
@@ -51,6 +52,11 @@
             <Label fx:id="statusLabel" text="未连接">
                 <HBox.margin>
                     <Insets left="5"/>
+                </HBox.margin>
+            </Label>
+            <Label fx:id="latencyLabel" text="" styleClass="latency-label">
+                <HBox.margin>
+                    <Insets left="10"/>
                 </HBox.margin>
             </Label>
         </HBox>
@@ -165,14 +171,61 @@
         
         <TableView fx:id="historyTable" VBox.vgrow="ALWAYS">
             <columns>
-                <TableColumn fx:id="algorithmColumn" text="压缩算法" prefWidth="100"/>
-                <TableColumn fx:id="originalSizeColumn" text="原始大小" prefWidth="100"/>
-                <TableColumn fx:id="compressedSizeColumn" text="压缩后大小" prefWidth="120"/>
-                <TableColumn fx:id="ratioColumn" text="压缩比" prefWidth="80"/>
-                <TableColumn fx:id="compressTimeColumn" text="压缩耗时" prefWidth="100"/>
-                <TableColumn fx:id="totalTimeColumn" text="总耗时" prefWidth="100"/>
+                <TableColumn fx:id="algorithmColumn" text="压缩算法" prefWidth="80"/>
+                <TableColumn fx:id="originalSizeColumn" text="原始大小" prefWidth="90"/>
+                <TableColumn fx:id="compressedSizeColumn" text="压缩后大小" prefWidth="90"/>
+                <TableColumn fx:id="ratioColumn" text="压缩比" prefWidth="70"/>
+                <TableColumn fx:id="compressTimeColumn" text="压缩耗时" prefWidth="80"/>
+                <TableColumn fx:id="sendTimeColumn" text="发送耗时" prefWidth="80"/>
+                <TableColumn fx:id="propagationDelayColumn" text="传播时延" prefWidth="80"/>
+                <TableColumn fx:id="decompressTimeColumn" text="解压耗时" prefWidth="80"/>
+                <TableColumn fx:id="totalTimeColumn" text="总往返" prefWidth="80"/>
             </columns>
         </TableView>
+    </VBox>
+    
+    <!-- 性能图表 -->
+    <VBox spacing="10" styleClass="section-box" VBox.vgrow="ALWAYS">
+        <Label text="性能图表" styleClass="section-title">
+            <font>
+                <Font size="16"/>
+            </font>
+        </Label>
+        
+        <TabPane fx:id="chartTabPane" VBox.vgrow="ALWAYS">
+            <tabs>
+                <Tab text="压缩比对比" closable="false">
+                    <BarChart fx:id="compressionRatioChart" title="压缩比对比">
+                        <xAxis>
+                            <CategoryAxis label="压缩算法"/>
+                        </xAxis>
+                        <yAxis>
+                            <NumberAxis label="压缩比 (%)" upperBound="100"/>
+                        </yAxis>
+                    </BarChart>
+                </Tab>
+                <Tab text="时间性能对比" closable="false">
+                    <BarChart fx:id="timePerformanceChart" title="时间性能对比">
+                        <xAxis>
+                            <CategoryAxis label="压缩算法"/>
+                        </xAxis>
+                        <yAxis>
+                            <NumberAxis label="时间 (ms)"/>
+                        </yAxis>
+                    </BarChart>
+                </Tab>
+                <Tab text="性能权衡" closable="false">
+                    <ScatterChart fx:id="tradeoffChart" title="压缩比 vs 总时间">
+                        <xAxis>
+                            <NumberAxis label="压缩比 (%)" upperBound="100"/>
+                        </xAxis>
+                        <yAxis>
+                            <NumberAxis label="总时间 (ms)"/>
+                        </yAxis>
+                    </ScatterChart>
+                </Tab>
+            </tabs>
+        </TabPane>
     </VBox>
     
 </VBox>

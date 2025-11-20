@@ -12,6 +12,9 @@ public class TransferMessageEncoder extends MessageToByteEncoder<TransferMessage
     
     @Override
     protected void encode(ChannelHandlerContext ctx, TransferMessage msg, ByteBuf out) throws Exception {
+        // 写入消息类型
+        out.writeByte(MessageType.TRANSFER);
+        
         // 写入算法ID
         out.writeByte(msg.getAlgorithmId());
         

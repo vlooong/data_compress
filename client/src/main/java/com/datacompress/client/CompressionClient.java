@@ -7,6 +7,9 @@ import com.datacompress.protocol.ResponseMessage;
 import com.datacompress.protocol.ResponseMessageDecoder;
 import com.datacompress.protocol.TransferMessage;
 import com.datacompress.protocol.TransferMessageEncoder;
+import com.datacompress.protocol.HeartbeatMessage;
+import com.datacompress.protocol.HeartbeatMessageEncoder;
+import com.datacompress.protocol.HeartbeatMessageDecoder;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -55,11 +58,12 @@ public class CompressionClient {
                         protected void initChannel(SocketChannel ch) throws Exception {
                             ChannelPipeline pipeline = ch.pipeline();
                             
-                            // 添加TransferMessage编码器
-                            pipeline.addLast("transferMessageEncoder", new TransferMessageEncoder());
+                            // 使用统一消息解码器
+                            pipeline.addLast("unifiedDecoder", new com.datacompress.protocol.UnifiedMessageDecoder());
                             
-                            // 添加ResponseMessage解码器
-                            pipeline.addLast("responseMessageDecoder", new ResponseMessageDecoder());
+                            // 添加编码器
+                            pipeline.addLast("heartbeatEncoder", new HeartbeatMessageEncoder());
+                            pipeline.addLast("transferMessageEncoder", new TransferMessageEncoder());
                         }
                     });
             
@@ -216,6 +220,61 @@ public class CompressionClient {
                 future.completeExceptionally(e);
             }
         }).start();
+        
+        return future;
+    }
+    
+    /**
+     * 发送心跳并测量网络延迟
+     * @return 往返时间（毫秒），如果失败返回-1
+     */
+    public CompletableFuture<Long> sendHeartbeat() {
+        CompletableFuture<Long> future = new CompletableFuture<>();
+        
+        if (!connected || channel == null || !channel.isActive()) {
+            future.complete(-1L);
+            return future;
+        }
+        
+        long sendTime = System.currentTimeMillis();
+        HeartbeatMessage heartbeat = new HeartbeatMessage(sendTime);
+        
+        // 添加临时处理器来接收心跳响应
+        CompletableFuture<HeartbeatMessage> responseFuture = new CompletableFuture<>();
+        
+        channel.pipeline().addLast("heartbeatResponseHandler", new SimpleChannelInboundHandler<HeartbeatMessage>() {
+            @Override
+            protected void channelRead0(ChannelHandlerContext ctx, HeartbeatMessage msg) throws Exception {
+                responseFuture.complete(msg);
+                ctx.pipeline().remove(this);
+            }
+            
+            @Override
+            public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+                responseFuture.completeExceptionally(cause);
+                ctx.pipeline().remove(this);
+            }
+        });
+        
+        // 发送心跳
+        channel.writeAndFlush(heartbeat).addListener((ChannelFutureListener) channelFuture -> {
+            if (!channelFuture.isSuccess()) {
+                responseFuture.completeExceptionally(channelFuture.cause());
+            }
+        });
+        
+        // 等待响应并计算延迟
+        responseFuture.whenComplete((response, error) -> {
+            if (error != null) {
+                logger.warn("心跳失败: {}", error.getMessage());
+                future.complete(-1L);
+            } else {
+                long receiveTime = System.currentTimeMillis();
+                long latency = receiveTime - sendTime;
+                logger.debug("心跳往返时间: {} ms", latency);
+                future.complete(latency);
+            }
+        });
         
         return future;
     }

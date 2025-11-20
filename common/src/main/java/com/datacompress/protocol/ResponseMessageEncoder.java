@@ -12,16 +12,13 @@ public class ResponseMessageEncoder extends MessageToByteEncoder<ResponseMessage
     
     @Override
     protected void encode(ChannelHandlerContext ctx, ResponseMessage msg, ByteBuf out) throws Exception {
-        // 写入接收开始时间戳
+        // 写入消息类型
+        out.writeByte(MessageType.RESPONSE);
+        
+        // 写入时间戳
         out.writeLong(msg.getReceiveStartTime());
-        
-        // 写入接收结束时间戳
         out.writeLong(msg.getReceiveEndTime());
-        
-        // 写入解压开始时间戳
         out.writeLong(msg.getDecompressStartTime());
-        
-        // 写入解压结束时间戳
         out.writeLong(msg.getDecompressEndTime());
         
         // 写入成功标志

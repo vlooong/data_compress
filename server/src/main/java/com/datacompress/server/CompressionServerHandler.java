@@ -31,6 +31,15 @@ public class CompressionServerHandler extends ChannelInboundHandlerAdapter {
     
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        // 处理心跳消息
+        if (msg instanceof com.datacompress.protocol.HeartbeatMessage) {
+            com.datacompress.protocol.HeartbeatMessage heartbeat = (com.datacompress.protocol.HeartbeatMessage) msg;
+            logger.debug("收到心跳消息，时间戳: {}", heartbeat.getTimestamp());
+            // 直接回传心跳消息
+            ctx.writeAndFlush(heartbeat);
+            return;
+        }
+        
         if (!(msg instanceof TransferMessage)) {
             logger.warn("收到未知类型的消息: {}", msg.getClass().getName());
             return;

@@ -11,58 +11,56 @@ import java.util.List;
  * 将接收到的字节流解码为TransferMessage对象
  */
 public class TransferMessageDecoder extends ByteToMessageDecoder {
-    
+
     private static final int HEADER_SIZE = 1 + 8 + 8 + 8 + 8 + 8 + 4; // 45 bytes
-    
+
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
-        // 检查是否有足够的字节读取消息头
-        if (in.readableBytes() < HEADER_SIZE) {
+        // 需要至少: 1字节类型 + 1字节算法ID + 3*8字节(size) + 3*8字节(时间戳) + 4字节数据长度 = 54字节
+        if (in.readableBytes() < 54) {
             return;
         }
-        
-        // 标记当前读取位置
+
+        // 标记读位置
         in.markReaderIndex();
-        
-        // 读取算法ID
-        byte algorithmId = in.readByte();
-        
-        // 读取原始大小
-        long originalSize = in.readLong();
-        
-        // 读取压缩后大小
-        long compressedSize = in.readLong();
-        
-        // 读取压缩开始时间戳
-        long compressStartTime = in.readLong();
-        
-        // 读取压缩结束时间戳
-        long compressEndTime = in.readLong();
-        
-        // 读取发送开始时间戳
-        long sendStartTime = in.readLong();
-        
-        // 读取压缩数据长度
-        int dataLength = in.readInt();
-        
-        // 检查是否有足够的字节读取压缩数据
-        if (in.readableBytes() < dataLength) {
-            // 重置读取位置，等待更多数据
+
+        // 读取并检查消息类型
+        byte messageType = in.readByte();
+        if (messageType != MessageType.TRANSFER) {
             in.resetReaderIndex();
             return;
         }
-        
+
+        // 读取消息头信息
+        byte algorithmId = in.readByte();
+        long originalSize = in.readLong();
+        long compressedSize = in.readLong();
+        long compressStartTime = in.readLong();
+        long compressEndTime = in.readLong();
+        long sendStartTime = in.readLong();
+        int dataLength = in.readInt();
+
+        // 检查是否有足够的字节读取压缩数据
+        if (in.readableBytes() < dataLength) {
+            in.resetReaderIndex();
+            return;
+        }
+
         // 读取压缩数据
         byte[] compressedData = new byte[dataLength];
         in.readBytes(compressedData);
-        
-        // 创建TransferMessage对象并添加到输出列表
+
+        // 创建TransferMessage对象
         TransferMessage message = new TransferMessage(
-            algorithmId, originalSize, compressedSize,
-            compressStartTime, compressEndTime, sendStartTime,
-            compressedData
+                algorithmId,
+                originalSize,
+                compressedSize,
+                compressStartTime,
+                compressEndTime,
+                sendStartTime,
+                compressedData
         );
-        
+
         out.add(message);
     }
 }

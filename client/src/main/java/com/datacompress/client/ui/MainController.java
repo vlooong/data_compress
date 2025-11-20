@@ -18,6 +18,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import javafx.scene.chart.*;
 
 /**
  * 主界面控制器
@@ -31,6 +35,7 @@ public class MainController {
     @FXML private Button connectButton;
     @FXML private Circle statusIndicator;
     @FXML private Label statusLabel;
+    @FXML private Label latencyLabel;
 
     @FXML private TextField filePathField;
     @FXML private Button browseButton;
@@ -56,11 +61,20 @@ public class MainController {
     @FXML private TableColumn<MetricsRow, String> compressedSizeColumn;
     @FXML private TableColumn<MetricsRow, String> ratioColumn;
     @FXML private TableColumn<MetricsRow, String> compressTimeColumn;
+    @FXML private TableColumn<MetricsRow, String> sendTimeColumn;
+    @FXML private TableColumn<MetricsRow, String> propagationDelayColumn;
+    @FXML private TableColumn<MetricsRow, String> decompressTimeColumn;
     @FXML private TableColumn<MetricsRow, String> totalTimeColumn;
+
+    @FXML private BarChart<String, Number> compressionRatioChart;
+    @FXML private BarChart<String, Number> timePerformanceChart;
+    @FXML private ScatterChart<Number, Number> tradeoffChart;
 
     private CompressionClient client;
     private File selectedFile;
     private ObservableList<MetricsRow> historyData = FXCollections.observableArrayList();
+    private ScheduledExecutorService heartbeatScheduler;
+    private ChartManager chartManager;
 
     @FXML
     public void initialize() {
@@ -99,9 +113,15 @@ public class MainController {
         compressedSizeColumn.setCellValueFactory(new PropertyValueFactory<>("compressedSize"));
         ratioColumn.setCellValueFactory(new PropertyValueFactory<>("ratio"));
         compressTimeColumn.setCellValueFactory(new PropertyValueFactory<>("compressTime"));
+        sendTimeColumn.setCellValueFactory(new PropertyValueFactory<>("sendTime"));
+        propagationDelayColumn.setCellValueFactory(new PropertyValueFactory<>("propagationDelay"));
+        decompressTimeColumn.setCellValueFactory(new PropertyValueFactory<>("decompressTime"));
         totalTimeColumn.setCellValueFactory(new PropertyValueFactory<>("totalTime"));
 
         historyTable.setItems(historyData);
+
+        // 初始化图表管理器
+        chartManager = new ChartManager(compressionRatioChart, timePerformanceChart, tradeoffChart);
 
         // 设置初始状态
         updateConnectionStatus(false);
@@ -142,6 +162,7 @@ public class MainController {
     private void handleConnect() {
         if (client != null && client.isConnected()) {
             // 断开连接
+            stopHeartbeat();
             client.disconnect();
             client = null;
             updateConnectionStatus(false);
@@ -166,6 +187,7 @@ public class MainController {
                     if (success) {
                         updateConnectionStatus(true);
                         connectButton.setText("断开");
+                        startHeartbeat();
                     } else {
                         showAlert("连接失败", "无法连接到服务器 " + host + ":" + port);
                         updateConnectionStatus(false);
@@ -290,9 +312,15 @@ public class MainController {
                 FileManager.formatFileSize(metrics.getCompressedSize()),
                 String.format("%.2f%%", metrics.getCompressionRatio() * 100),
                 metrics.getCompressionTime() + " ms",
+                metrics.getSendTime() + " ms",
+                metrics.getPropagationDelay() + " ms",
+                metrics.getDecompressionTime() + " ms",
                 metrics.getTotalRoundTripTime() + " ms"
         );
         historyData.add(0, row); // 添加到列表开头
+        
+        // 更新图表
+        chartManager.addPerformanceData(metrics);
     }
 
     private void showAlert(String title, String content) {
@@ -303,7 +331,51 @@ public class MainController {
         alert.showAndWait();
     }
 
+    private void startHeartbeat() {
+        stopHeartbeat(); // 停止之前的调度器（如果有）
+        
+        heartbeatScheduler = Executors.newSingleThreadScheduledExecutor();
+        heartbeatScheduler.scheduleAtFixedRate(() -> {
+            if (client != null && client.isConnected()) {
+                client.sendHeartbeat().thenAccept(latency -> {
+                    Platform.runLater(() -> updateLatencyDisplay(latency));
+                });
+            }
+        }, 0, 5, TimeUnit.SECONDS); // 每5秒发送一次心跳
+    }
+    
+    private void stopHeartbeat() {
+        if (heartbeatScheduler != null && !heartbeatScheduler.isShutdown()) {
+            heartbeatScheduler.shutdown();
+            heartbeatScheduler = null;
+        }
+        Platform.runLater(() -> latencyLabel.setText(""));
+    }
+    
+    private void updateLatencyDisplay(long latency) {
+        if (latency < 0) {
+            latencyLabel.setText("(心跳失败)");
+            latencyLabel.setStyle("-fx-text-fill: red;");
+            return;
+        }
+        
+        String latencyText = String.format("(%d ms)", latency);
+        latencyLabel.setText(latencyText);
+        
+        // 根据延迟设置颜色
+        if (latency < 50) {
+            latencyLabel.setStyle("-fx-text-fill: green;"); // 优秀
+        } else if (latency < 200) {
+            latencyLabel.setStyle("-fx-text-fill: #FFD700;"); // 良好（金色）
+        } else if (latency < 500) {
+            latencyLabel.setStyle("-fx-text-fill: orange;"); // 一般
+        } else {
+            latencyLabel.setStyle("-fx-text-fill: red;"); // 较差
+        }
+    }
+    
     public void shutdown() {
+        stopHeartbeat();
         if (client != null) {
             client.disconnect();
         }
@@ -318,15 +390,22 @@ public class MainController {
         private final String compressedSize;
         private final String ratio;
         private final String compressTime;
+        private final String sendTime;
+        private final String propagationDelay;
+        private final String decompressTime;
         private final String totalTime;
 
         public MetricsRow(String algorithm, String originalSize, String compressedSize,
-                         String ratio, String compressTime, String totalTime) {
+                         String ratio, String compressTime, String sendTime,
+                         String propagationDelay, String decompressTime, String totalTime) {
             this.algorithm = algorithm;
             this.originalSize = originalSize;
             this.compressedSize = compressedSize;
             this.ratio = ratio;
             this.compressTime = compressTime;
+            this.sendTime = sendTime;
+            this.propagationDelay = propagationDelay;
+            this.decompressTime = decompressTime;
             this.totalTime = totalTime;
         }
 
@@ -335,6 +414,9 @@ public class MainController {
         public String getCompressedSize() { return compressedSize; }
         public String getRatio() { return ratio; }
         public String getCompressTime() { return compressTime; }
+        public String getSendTime() { return sendTime; }
+        public String getPropagationDelay() { return propagationDelay; }
+        public String getDecompressTime() { return decompressTime; }
         public String getTotalTime() { return totalTime; }
     }
 }
