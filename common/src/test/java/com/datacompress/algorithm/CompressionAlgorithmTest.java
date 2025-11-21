@@ -23,6 +23,7 @@ class CompressionAlgorithmTest {
      */
     static Stream<CompressionAlgorithm> algorithmProvider() {
         return Stream.of(
+            new NoCompression(),
             new GzipCompression(),
             new DeflateCompression(),
             new ZipCompression(),
@@ -172,6 +173,7 @@ class CompressionAlgorithmTest {
     @Test
     void testAlgorithmIdsAreUnique() {
         CompressionAlgorithm[] algorithms = {
+            new NoCompression(),
             new GzipCompression(),
             new DeflateCompression(),
             new ZipCompression(),
@@ -191,10 +193,10 @@ class CompressionAlgorithmTest {
         
         assertEquals(algorithms.length, uniqueIdCount, "所有算法ID应该是唯一的");
         
-        // 验证ID在1-9范围内
+        // 验证ID在0-9范围内
         Arrays.stream(algorithms).forEach(alg -> {
-            assertTrue(alg.getAlgorithmId() >= 1 && alg.getAlgorithmId() <= 9,
-                alg.getName() + " 的ID应在1-9范围内");
+            assertTrue(alg.getAlgorithmId() >= 0 && alg.getAlgorithmId() <= 9,
+                alg.getName() + " 的ID应在0-9范围内");
         });
     }
     
@@ -204,7 +206,7 @@ class CompressionAlgorithmTest {
     @Test
     void testCompressionFactory() {
         // 测试通过ID获取算法
-        for (byte id = 1; id <= 9; id++) {
+        for (byte id = 0; id <= 9; id++) {
             CompressionAlgorithm algorithm = CompressionFactory.getAlgorithm(id);
             assertNotNull(algorithm, "应该能通过ID " + id + " 获取算法");
             assertEquals(id, algorithm.getAlgorithmId(), "算法ID应该匹配");
@@ -212,7 +214,7 @@ class CompressionAlgorithmTest {
         
         // 测试通过名称获取算法
         String[] names = CompressionFactory.getAllAlgorithmNames();
-        assertEquals(9, names.length, "应该有9种算法");
+        assertEquals(10, names.length, "应该有10种算法");
         
         for (String name : names) {
             CompressionAlgorithm algorithm = CompressionFactory.getAlgorithm(name);

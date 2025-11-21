@@ -15,6 +15,7 @@ public class CompressionFactory {
     private static final Map<String, CompressionAlgorithm> algorithmByName = new HashMap<>();
     
     static {
+        registerAlgorithm(new NoCompression());
         registerAlgorithm(new GzipCompression());
         registerAlgorithm(new DeflateCompression());
         registerAlgorithm(new ZipCompression());
