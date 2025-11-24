@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -16,8 +17,8 @@ public class TransferMessageDecoder extends ByteToMessageDecoder {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
-        // 需要至少: 1字节类型 + 1字节算法ID + 3*8字节(size) + 3*8字节(时间戳) + 4字节数据长度 = 54字节
-        if (in.readableBytes() < 54) {
+        // 需要至少: 1字节类型 + 1字节算法ID + 5*8字节(sizes+timestamps) + 4字节文件名长度 = 51字节
+        if (in.readableBytes() < 51) {
             return;
         }
 
@@ -38,6 +39,25 @@ public class TransferMessageDecoder extends ByteToMessageDecoder {
         long compressStartTime = in.readLong();
         long compressEndTime = in.readLong();
         long sendStartTime = in.readLong();
+        
+        // 读取文件名长度
+        int fileNameLength = in.readInt();
+        
+        // 检查是否有足够的字节读取文件名
+        if (in.readableBytes() < fileNameLength + 4) { // +4 for data length field
+            in.resetReaderIndex();
+            return;
+        }
+        
+        // 读取文件名
+        String fileName = "";
+        if (fileNameLength > 0) {
+            byte[] fileNameBytes = new byte[fileNameLength];
+            in.readBytes(fileNameBytes);
+            fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
+        }
+        
+        // 读取压缩数据长度
         int dataLength = in.readInt();
 
         // 检查是否有足够的字节读取压缩数据
@@ -58,6 +78,7 @@ public class TransferMessageDecoder extends ByteToMessageDecoder {
                 compressStartTime,
                 compressEndTime,
                 sendStartTime,
+                fileName,
                 compressedData
         );
 

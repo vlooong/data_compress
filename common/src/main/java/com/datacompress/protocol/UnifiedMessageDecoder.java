@@ -6,6 +6,7 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 
 import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -13,6 +14,9 @@ import java.util.List;
  * 根据消息类型分发到相应的解码逻辑
  */
 public class UnifiedMessageDecoder extends ByteToMessageDecoder {
+    
+    private static final org.slf4j.Logger logger = 
+        org.slf4j.LoggerFactory.getLogger(UnifiedMessageDecoder.class);
     
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
@@ -71,8 +75,8 @@ public class UnifiedMessageDecoder extends ByteToMessageDecoder {
     }
     
     private void decodeTransfer(ByteBuf in, List<Object> out) throws Exception {
-        // 需要: 1字节算法ID + 3*8字节(size) + 3*8字节(时间戳) + 4字节数据长度 = 53字节
-        if (in.readableBytes() < 53) {
+        // 需要: 1字节算法ID + 5*8字节(sizes+timestamps) + 4字节文件名长度 = 49字节
+        if (in.readableBytes() < 49) {
             in.resetReaderIndex();
             return;
         }
@@ -84,6 +88,25 @@ public class UnifiedMessageDecoder extends ByteToMessageDecoder {
         long compressStartTime = in.readLong();
         long compressEndTime = in.readLong();
         long sendStartTime = in.readLong();
+        
+        // 读取文件名长度
+        int fileNameLength = in.readInt();
+        
+        // 检查是否有足够的字节读取文件名
+        if (in.readableBytes() < fileNameLength + 4) { // +4 for data length field
+            in.resetReaderIndex();
+            return;
+        }
+        
+        // 读取文件名
+        String fileName = "";
+        if (fileNameLength > 0) {
+            byte[] fileNameBytes = new byte[fileNameLength];
+            in.readBytes(fileNameBytes);
+            fileName = new String(fileNameBytes, StandardCharsets.UTF_8);
+        }
+        
+        // 读取压缩数据长度
         int dataLength = in.readInt();
         
         if (in.readableBytes() < dataLength) {
@@ -97,7 +120,7 @@ public class UnifiedMessageDecoder extends ByteToMessageDecoder {
         TransferMessage message = new TransferMessage(
                 algorithmId, originalSize, compressedSize,
                 compressStartTime, compressEndTime, sendStartTime,
-                compressedData
+                fileName, compressedData
         );
         
         out.add(message);
@@ -135,7 +158,4 @@ public class UnifiedMessageDecoder extends ByteToMessageDecoder {
         
         out.add(response);
     }
-    
-    private static final org.slf4j.Logger logger = 
-        org.slf4j.LoggerFactory.getLogger(UnifiedMessageDecoder.class);
 }

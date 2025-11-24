@@ -93,12 +93,14 @@ public class CompressionClient {
     /**
      * 发送文件数据
      * @param fileData 文件数据
+     * @param fileName 文件名（含扩展名）
      * @param algorithmName 压缩算法名称
      * @param compressionLevel 压缩级别
      * @param progressCallback 进度回调
      * @return 性能指标
      */
-    public CompletableFuture<PerformanceMetrics> sendFile(byte[] fileData, String algorithmName, 
+    public CompletableFuture<PerformanceMetrics> sendFile(byte[] fileData, String fileName,
+                                                          String algorithmName, 
                                                           int compressionLevel,
                                                           ProgressCallback progressCallback) {
         CompletableFuture<PerformanceMetrics> future = new CompletableFuture<>();
@@ -156,6 +158,7 @@ public class CompressionClient {
                         compressStartTime,
                         compressEndTime,
                         sendStartTime,
+                        fileName,
                         compressedData
                 );
                 

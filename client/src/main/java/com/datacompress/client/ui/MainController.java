@@ -247,8 +247,8 @@ public class MainController {
             return;
         }
 
-        // 发送文件（传递压缩级别）
-        client.sendFile(fileData, algorithm, compressionLevel, (progress, message) -> {
+        // 发送文件（传递文件名和压缩级别）
+        client.sendFile(fileData, selectedFile.getName(), algorithm, compressionLevel, (progress, message) -> {
             Platform.runLater(() -> {
                 progressBar.setProgress(progress);
                 progressLabel.setText(message);

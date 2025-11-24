@@ -4,10 +4,14 @@ import com.datacompress.algorithm.CompressionAlgorithm;
 import com.datacompress.algorithm.CompressionFactory;
 import com.datacompress.protocol.ResponseMessage;
 import com.datacompress.protocol.TransferMessage;
+import com.datacompress.server.config.FileStorageConfig;
+import com.datacompress.server.util.FileUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.file.Path;
 
 /**
  * Netty业务处理器
@@ -16,6 +20,11 @@ import org.slf4j.LoggerFactory;
 public class CompressionServerHandler extends ChannelInboundHandlerAdapter {
     
     private static final Logger logger = LoggerFactory.getLogger(CompressionServerHandler.class);
+    private final FileStorageConfig fileStorageConfig;
+    
+    public CompressionServerHandler() {
+        this.fileStorageConfig = new FileStorageConfig();
+    }
     
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
@@ -89,6 +98,10 @@ public class CompressionServerHandler extends ChannelInboundHandlerAdapter {
                     decompressedData.length,
                     decompressEndTime - decompressStartTime);
             
+            // 保存解压后的文件到磁盘（使用原始文件名）
+            saveDecompressedFile(decompressedData, transferMsg.getFileName(), 
+                                algorithm.getName(), receiveStartTime);
+            
             // 创建成功响应
             response = new ResponseMessage(
                     receiveStartTime,
@@ -127,5 +140,37 @@ public class CompressionServerHandler extends ChannelInboundHandlerAdapter {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         logger.error("发生异常: {}", cause.getMessage(), cause);
         ctx.close();
+    }
+    
+    /**
+     * 保存解压后的文件
+     * 
+     * @param data 解压后的数据
+     * @param originalFileName 原始文件名（可能为null或空）
+     * @param algorithmName 压缩算法名称
+     * @param timestamp 时间戳
+     */
+    private void saveDecompressedFile(byte[] data, String originalFileName, 
+                                      String algorithmName, long timestamp) {
+        if (!fileStorageConfig.isSaveEnabled()) {
+            logger.debug("文件保存功能已禁用，跳过保存");
+            return;
+        }
+        
+        try {
+            String fileName = FileUtils.generateFileName(originalFileName, algorithmName, timestamp);
+            Path savedPath = FileUtils.saveFile(
+                fileStorageConfig.getStorageDirectory(), 
+                fileName, 
+                data
+            );
+            
+            if (savedPath != null) {
+                logger.info("解压文件已保存: {}", savedPath.toAbsolutePath());
+            }
+        } catch (Exception e) {
+            // 文件保存失败不应影响响应发送
+            logger.error("保存解压文件时发生错误", e);
+        }
     }
 }
