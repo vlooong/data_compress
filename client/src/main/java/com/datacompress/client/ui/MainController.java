@@ -118,6 +118,63 @@ public class MainController {
         decompressTimeColumn.setCellValueFactory(new PropertyValueFactory<>("decompressTime"));
         totalTimeColumn.setCellValueFactory(new PropertyValueFactory<>("totalTime"));
 
+        // 为数值列设置自定义比较器，确保按数值排序而不是按字符串排序
+        originalSizeColumn.setComparator((s1, s2) -> {
+            MetricsRow r1 = findRowByValue(historyData, row -> row.getOriginalSize().equals(s1));
+            MetricsRow r2 = findRowByValue(historyData, row -> row.getOriginalSize().equals(s2));
+            if (r1 == null || r2 == null) return 0;
+            return Long.compare(r1.getOriginalSizeBytes(), r2.getOriginalSizeBytes());
+        });
+        
+        compressedSizeColumn.setComparator((s1, s2) -> {
+            MetricsRow r1 = findRowByValue(historyData, row -> row.getCompressedSize().equals(s1));
+            MetricsRow r2 = findRowByValue(historyData, row -> row.getCompressedSize().equals(s2));
+            if (r1 == null || r2 == null) return 0;
+            return Long.compare(r1.getCompressedSizeBytes(), r2.getCompressedSizeBytes());
+        });
+        
+        ratioColumn.setComparator((s1, s2) -> {
+            MetricsRow r1 = findRowByValue(historyData, row -> row.getRatio().equals(s1));
+            MetricsRow r2 = findRowByValue(historyData, row -> row.getRatio().equals(s2));
+            if (r1 == null || r2 == null) return 0;
+            return Double.compare(r1.getRatioValue(), r2.getRatioValue());
+        });
+        
+        compressTimeColumn.setComparator((s1, s2) -> {
+            MetricsRow r1 = findRowByValue(historyData, row -> row.getCompressTime().equals(s1));
+            MetricsRow r2 = findRowByValue(historyData, row -> row.getCompressTime().equals(s2));
+            if (r1 == null || r2 == null) return 0;
+            return Long.compare(r1.getCompressTimeMs(), r2.getCompressTimeMs());
+        });
+        
+        sendTimeColumn.setComparator((s1, s2) -> {
+            MetricsRow r1 = findRowByValue(historyData, row -> row.getSendTime().equals(s1));
+            MetricsRow r2 = findRowByValue(historyData, row -> row.getSendTime().equals(s2));
+            if (r1 == null || r2 == null) return 0;
+            return Long.compare(r1.getSendTimeMs(), r2.getSendTimeMs());
+        });
+        
+        propagationDelayColumn.setComparator((s1, s2) -> {
+            MetricsRow r1 = findRowByValue(historyData, row -> row.getPropagationDelay().equals(s1));
+            MetricsRow r2 = findRowByValue(historyData, row -> row.getPropagationDelay().equals(s2));
+            if (r1 == null || r2 == null) return 0;
+            return Long.compare(r1.getPropagationDelayMs(), r2.getPropagationDelayMs());
+        });
+        
+        decompressTimeColumn.setComparator((s1, s2) -> {
+            MetricsRow r1 = findRowByValue(historyData, row -> row.getDecompressTime().equals(s1));
+            MetricsRow r2 = findRowByValue(historyData, row -> row.getDecompressTime().equals(s2));
+            if (r1 == null || r2 == null) return 0;
+            return Long.compare(r1.getDecompressTimeMs(), r2.getDecompressTimeMs());
+        });
+        
+        totalTimeColumn.setComparator((s1, s2) -> {
+            MetricsRow r1 = findRowByValue(historyData, row -> row.getTotalTime().equals(s1));
+            MetricsRow r2 = findRowByValue(historyData, row -> row.getTotalTime().equals(s2));
+            if (r1 == null || r2 == null) return 0;
+            return Long.compare(r1.getTotalTimeMs(), r2.getTotalTimeMs());
+        });
+
         historyTable.setItems(historyData);
 
         // 初始化图表管理器
@@ -126,6 +183,18 @@ public class MainController {
         // 设置初始状态
         updateConnectionStatus(false);
         sendButton.setDisable(true);
+    }
+
+    /**
+     * 辅助方法：根据条件查找MetricsRow
+     */
+    private MetricsRow findRowByValue(ObservableList<MetricsRow> data, java.util.function.Predicate<MetricsRow> predicate) {
+        for (MetricsRow row : data) {
+            if (predicate.test(row)) {
+                return row;
+            }
+        }
+        return null;
     }
 
     /**
@@ -308,13 +377,21 @@ public class MainController {
     private void addToHistory(PerformanceMetrics metrics) {
         MetricsRow row = new MetricsRow(
                 metrics.getAlgorithmName(),
+                metrics.getOriginalSize(),
                 FileManager.formatFileSize(metrics.getOriginalSize()),
+                metrics.getCompressedSize(),
                 FileManager.formatFileSize(metrics.getCompressedSize()),
+                metrics.getCompressionRatio(),
                 String.format("%.2f%%", metrics.getCompressionRatio() * 100),
+                metrics.getCompressionTime(),
                 metrics.getCompressionTime() + " ms",
+                metrics.getSendTime(),
                 metrics.getSendTime() + " ms",
+                metrics.getPropagationDelay(),
                 metrics.getPropagationDelay() + " ms",
+                metrics.getDecompressionTime(),
                 metrics.getDecompressionTime() + " ms",
+                metrics.getTotalRoundTripTime(),
                 metrics.getTotalRoundTripTime() + " ms"
         );
         historyData.add(0, row); // 添加到列表开头
@@ -386,6 +463,16 @@ public class MainController {
      */
     public static class MetricsRow {
         private final String algorithm;
+        // 原始数值字段（用于排序）
+        private final long originalSizeBytes;
+        private final long compressedSizeBytes;
+        private final double ratioValue;
+        private final long compressTimeMs;
+        private final long sendTimeMs;
+        private final long propagationDelayMs;
+        private final long decompressTimeMs;
+        private final long totalTimeMs;
+        // 格式化字符串（用于显示）
         private final String originalSize;
         private final String compressedSize;
         private final String ratio;
@@ -395,20 +482,35 @@ public class MainController {
         private final String decompressTime;
         private final String totalTime;
 
-        public MetricsRow(String algorithm, String originalSize, String compressedSize,
-                         String ratio, String compressTime, String sendTime,
-                         String propagationDelay, String decompressTime, String totalTime) {
+        public MetricsRow(String algorithm, 
+                         long originalSizeBytes, String originalSize,
+                         long compressedSizeBytes, String compressedSize,
+                         double ratioValue, String ratio,
+                         long compressTimeMs, String compressTime,
+                         long sendTimeMs, String sendTime,
+                         long propagationDelayMs, String propagationDelay,
+                         long decompressTimeMs, String decompressTime,
+                         long totalTimeMs, String totalTime) {
             this.algorithm = algorithm;
+            this.originalSizeBytes = originalSizeBytes;
             this.originalSize = originalSize;
+            this.compressedSizeBytes = compressedSizeBytes;
             this.compressedSize = compressedSize;
+            this.ratioValue = ratioValue;
             this.ratio = ratio;
+            this.compressTimeMs = compressTimeMs;
             this.compressTime = compressTime;
+            this.sendTimeMs = sendTimeMs;
             this.sendTime = sendTime;
+            this.propagationDelayMs = propagationDelayMs;
             this.propagationDelay = propagationDelay;
+            this.decompressTimeMs = decompressTimeMs;
             this.decompressTime = decompressTime;
+            this.totalTimeMs = totalTimeMs;
             this.totalTime = totalTime;
         }
 
+        // Getters for display strings
         public String getAlgorithm() { return algorithm; }
         public String getOriginalSize() { return originalSize; }
         public String getCompressedSize() { return compressedSize; }
@@ -418,5 +520,15 @@ public class MainController {
         public String getPropagationDelay() { return propagationDelay; }
         public String getDecompressTime() { return decompressTime; }
         public String getTotalTime() { return totalTime; }
+        
+        // Getters for numeric values (for sorting)
+        public long getOriginalSizeBytes() { return originalSizeBytes; }
+        public long getCompressedSizeBytes() { return compressedSizeBytes; }
+        public double getRatioValue() { return ratioValue; }
+        public long getCompressTimeMs() { return compressTimeMs; }
+        public long getSendTimeMs() { return sendTimeMs; }
+        public long getPropagationDelayMs() { return propagationDelayMs; }
+        public long getDecompressTimeMs() { return decompressTimeMs; }
+        public long getTotalTimeMs() { return totalTimeMs; }
     }
 }
