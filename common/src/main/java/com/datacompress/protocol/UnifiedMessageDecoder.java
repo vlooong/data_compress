@@ -75,8 +75,8 @@ public class UnifiedMessageDecoder extends ByteToMessageDecoder {
     }
     
     private void decodeTransfer(ByteBuf in, List<Object> out) throws Exception {
-        // 需要: 1字节算法ID + 5*8字节(sizes+timestamps) + 4字节文件名长度 = 49字节
-        if (in.readableBytes() < 49) {
+        // 需要: 1字节算法ID + 6*8字节(sizes+timestamps) + 4字节文件名长度 = 57字节
+        if (in.readableBytes() < 57) {
             in.resetReaderIndex();
             return;
         }
@@ -88,6 +88,7 @@ public class UnifiedMessageDecoder extends ByteToMessageDecoder {
         long compressStartTime = in.readLong();
         long compressEndTime = in.readLong();
         long sendStartTime = in.readLong();
+        long sendEndTime = in.readLong();
         
         // 读取文件名长度
         int fileNameLength = in.readInt();
@@ -119,7 +120,7 @@ public class UnifiedMessageDecoder extends ByteToMessageDecoder {
         
         TransferMessage message = new TransferMessage(
                 algorithmId, originalSize, compressedSize,
-                compressStartTime, compressEndTime, sendStartTime,
+                compressStartTime, compressEndTime, sendStartTime, sendEndTime,
                 fileName, compressedData
         );
         

@@ -151,6 +151,10 @@ public class CompressionClient {
                 long sendStartTime = System.currentTimeMillis();
                 metrics.setSendStartTime(sendStartTime);
                 
+                // 设置发送结束时间（在发送之前）
+                long sendEndTime = System.currentTimeMillis();
+                metrics.setSendEndTime(sendEndTime);
+                
                 TransferMessage transferMsg = new TransferMessage(
                         algorithm.getAlgorithmId(),
                         fileData.length,
@@ -158,6 +162,7 @@ public class CompressionClient {
                         compressStartTime,
                         compressEndTime,
                         sendStartTime,
+                        sendEndTime,
                         fileName,
                         compressedData
                 );
@@ -181,8 +186,6 @@ public class CompressionClient {
                 
                 channel.writeAndFlush(transferMsg).addListener((ChannelFutureListener) channelFuture -> {
                     if (channelFuture.isSuccess()) {
-                        long sendEndTime = System.currentTimeMillis();
-                        metrics.setSendEndTime(sendEndTime);
                         logger.info("数据发送完成，耗时: {} ms", sendEndTime - sendStartTime);
                         
                         if (progressCallback != null) {
@@ -245,7 +248,10 @@ public class CompressionClient {
         // 添加临时处理器来接收心跳响应
         CompletableFuture<HeartbeatMessage> responseFuture = new CompletableFuture<>();
         
-        channel.pipeline().addLast("heartbeatResponseHandler", new SimpleChannelInboundHandler<HeartbeatMessage>() {
+        // 使用时间戳生成唯一的处理器名称，避免冲突
+        String handlerName = "heartbeatResponseHandler-" + sendTime;
+        
+        channel.pipeline().addLast(handlerName, new SimpleChannelInboundHandler<HeartbeatMessage>() {
             @Override
             protected void channelRead0(ChannelHandlerContext ctx, HeartbeatMessage msg) throws Exception {
                 responseFuture.complete(msg);

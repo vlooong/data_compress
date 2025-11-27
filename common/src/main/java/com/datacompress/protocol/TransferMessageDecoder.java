@@ -13,12 +13,12 @@ import java.util.List;
  */
 public class TransferMessageDecoder extends ByteToMessageDecoder {
 
-    private static final int HEADER_SIZE = 1 + 8 + 8 + 8 + 8 + 8 + 4; // 45 bytes
+    private static final int HEADER_SIZE = 1 + 8 + 8 + 8 + 8 + 8 + 8 + 4; // 53 bytes
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
-        // 需要至少: 1字节类型 + 1字节算法ID + 5*8字节(sizes+timestamps) + 4字节文件名长度 = 51字节
-        if (in.readableBytes() < 51) {
+        // 需要至少: 1字节类型 + 1字节算法ID + 6*8字节(sizes+timestamps) + 4字节文件名长度 = 59字节
+        if (in.readableBytes() < 59) {
             return;
         }
 
@@ -39,6 +39,7 @@ public class TransferMessageDecoder extends ByteToMessageDecoder {
         long compressStartTime = in.readLong();
         long compressEndTime = in.readLong();
         long sendStartTime = in.readLong();
+        long sendEndTime = in.readLong();
         
         // 读取文件名长度
         int fileNameLength = in.readInt();
@@ -78,6 +79,7 @@ public class TransferMessageDecoder extends ByteToMessageDecoder {
                 compressStartTime,
                 compressEndTime,
                 sendStartTime,
+                sendEndTime,
                 fileName,
                 compressedData
         );

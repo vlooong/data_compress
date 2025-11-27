@@ -40,6 +40,9 @@ public class CompressionServerHandler extends ChannelInboundHandlerAdapter {
     
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        // 立即记录接收时间（在处理任何消息之前）
+        long receiveStartTime = System.currentTimeMillis();
+        
         // 处理心跳消息
         if (msg instanceof com.datacompress.protocol.HeartbeatMessage) {
             com.datacompress.protocol.HeartbeatMessage heartbeat = (com.datacompress.protocol.HeartbeatMessage) msg;
@@ -56,9 +59,6 @@ public class CompressionServerHandler extends ChannelInboundHandlerAdapter {
         
         TransferMessage transferMsg = (TransferMessage) msg;
         
-        // 记录接收开始时间
-        long receiveStartTime = System.currentTimeMillis();
-        
         logger.info("收到传输消息 - 算法ID: {}, 原始大小: {} bytes, 压缩后大小: {} bytes",
                 transferMsg.getAlgorithmId(),
                 transferMsg.getOriginalSize(),
@@ -66,6 +66,11 @@ public class CompressionServerHandler extends ChannelInboundHandlerAdapter {
         
         // 记录接收完成时间（消息已完整接收）
         long receiveEndTime = System.currentTimeMillis();
+        
+        // 计算传播时延: 服务端接收开始时间 - 客户端发送结束时间
+        long propagationDelay = receiveStartTime - transferMsg.getSendEndTime();
+        logger.info("传播时延: {} ms (接收时间: {}, 发送结束时间: {})", 
+                    propagationDelay, receiveStartTime, transferMsg.getSendEndTime());
         
         ResponseMessage response;
         

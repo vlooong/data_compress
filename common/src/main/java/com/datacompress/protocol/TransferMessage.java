@@ -16,6 +16,7 @@ public class TransferMessage implements Serializable {
     private long compressStartTime;      // 压缩开始时间戳
     private long compressEndTime;        // 压缩结束时间戳
     private long sendStartTime;          // 发送开始时间戳
+    private long sendEndTime;            // 发送结束时间戳（用于计算传播时延）
     private String fileName;             // 原始文件名（含扩展名）
     private byte[] compressedData;       // 压缩后的数据
     
@@ -24,13 +25,14 @@ public class TransferMessage implements Serializable {
     
     public TransferMessage(byte algorithmId, long originalSize, long compressedSize,
                           long compressStartTime, long compressEndTime, 
-                          long sendStartTime, String fileName, byte[] compressedData) {
+                          long sendStartTime, long sendEndTime, String fileName, byte[] compressedData) {
         this.algorithmId = algorithmId;
         this.originalSize = originalSize;
         this.compressedSize = compressedSize;
         this.compressStartTime = compressStartTime;
         this.compressEndTime = compressEndTime;
         this.sendStartTime = sendStartTime;
+        this.sendEndTime = sendEndTime;
         this.fileName = fileName;
         this.compressedData = compressedData;
     }
@@ -83,6 +85,14 @@ public class TransferMessage implements Serializable {
     
     public void setSendStartTime(long sendStartTime) {
         this.sendStartTime = sendStartTime;
+    }
+    
+    public long getSendEndTime() {
+        return sendEndTime;
+    }
+    
+    public void setSendEndTime(long sendEndTime) {
+        this.sendEndTime = sendEndTime;
     }
     
     public byte[] getCompressedData() {

@@ -35,6 +35,9 @@ public class TransferMessageEncoder extends MessageToByteEncoder<TransferMessage
         // 写入发送开始时间戳
         out.writeLong(msg.getSendStartTime());
         
+        // 写入发送结束时间戳
+        out.writeLong(msg.getSendEndTime());
+        
         // 写入文件名
         byte[] fileNameBytes = msg.getFileName() != null ? 
             msg.getFileName().getBytes(StandardCharsets.UTF_8) : new byte[0];
